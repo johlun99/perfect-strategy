@@ -13,6 +13,11 @@ describe('settleHand', () => {
         expect(r).toEqual({ outcome: 'blackjack', net: 15 });
     });
 
+    it('rounds a fractional blackjack win up to the nearest integer', () => {
+        const r = settleHand({ player: hand('A', 'K'), dealer: hand('10', '7'), bet: 5, blackjackPayout: 1.5 });
+        expect(r).toEqual({ outcome: 'blackjack', net: 8 }); // 5 * 1.5 = 7.5 -> 8
+    });
+
     it('pushes when both have a natural blackjack', () => {
         const r = settleHand({ ...base, player: hand('A', 'K'), dealer: hand('A', 'Q') });
         expect(r).toEqual({ outcome: 'push', net: 0 });

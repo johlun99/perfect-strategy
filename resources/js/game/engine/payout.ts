@@ -30,7 +30,7 @@ export function settleHand(input: SettleInput): Settlement {
     const dealerNatural = isBlackjack(dealer);
 
     if (playerNatural && dealerNatural) return { outcome: 'push', net: 0 };
-    if (playerNatural) return { outcome: 'blackjack', net: bet * blackjackPayout };
+    if (playerNatural) return { outcome: 'blackjack', net: Math.ceil(bet * blackjackPayout) };
     if (dealerNatural) return { outcome: 'lose', net: -bet };
 
     if (isBust(player)) return { outcome: 'lose', net: -bet };
