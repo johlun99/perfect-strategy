@@ -1,0 +1,53 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - ./:/var/www/html
+    environment:
+      APP_ENV: local
+    # V1 needs no database; start mysql only for the later persistence work.
+
+  # Vite dev server (HMR). For a production-style build run `npm run build` instead.
+  node:
+    image: node:22-alpine
+    working_dir: /var/www/html
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./:/var/www/html
+
+  # Scaffolded for the later persistence work; the V1 app does not use it yet.
+  mysql:
+    image: mysql:8.4
+    command: --default-authentication-plugin=caching_sha2_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: blackjack
+      MYSQL_USER: blackjack
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3307:3306" # 3307 to avoid clashing with a local MySQL
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  db-data:

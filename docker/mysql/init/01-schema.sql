@@ -1,0 +1,1 @@
+-- Schema for later persistence work (bankroll, stats). Empty for V1.

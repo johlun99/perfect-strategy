@@ -1,0 +1,101 @@
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Game } from '../engine/game';
+import type { CardSource } from '../engine/shoe';
+import type { Card, Rank } from '../engine/card';
+import { Table } from './table';
+
+const c = (rank: Rank): Card => ({ rank, suit: 'spades' });
+function stack(...ranks: Rank[]): CardSource {
+    const cards = ranks.map(c);
+    let i = 0;
+    return { draw: () => cards[i++], needsShuffle: () => false, reshuffle: () => { i = 0; } };
+}
+
+// jsdom has no HTMLAudioElement.play; stub Audio so the SoundManager is inert.
+class FakeAudio {
+    src: string;
+    volume = 1;
+    preload = '';
+    constructor(src?: string) { this.src = src ?? ''; }
+    play() { return Promise.resolve(); }
+    cloneNode() { return new FakeAudio(this.src); }
+}
+
+const MARKUP = `
+<main id="table">
+  <button id="mute"></button>
+  <div id="dealer-hand"></div><div id="dealer-total" hidden></div>
+  <div id="banner" hidden></div>
+  <div id="player-hands"></div>
+  <span id="chips">0</span><span id="bet">0</span>
+  <div id="bet-controls">
+    <div id="chip-rack"></div>
+    <button id="clear-bet"></button>
+    <button id="deal" disabled></button>
+  </div>
+  <div id="action-controls" hidden>
+    <button data-action="hit"></button><button data-action="stand"></button>
+    <button data-action="double"></button><button data-action="split"></button>
+    <button data-action="surrender"></button>
+  </div>
+  <div id="insurance-controls" hidden>
+    <button data-insurance="yes"></button><button data-insurance="no"></button>
+  </div>
+</main>`;
+
+const click = (el: Element | null) => (el as HTMLElement).click();
+
+describe('Table (UI integration)', () => {
+    beforeEach(() => {
+        (globalThis as unknown as { Audio: unknown }).Audio = FakeAudio;
+        vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 0; });
+        document.body.innerHTML = MARKUP;
+    });
+
+    it('renders the starting bankroll and disables Deal with no bet', () => {
+        const game = new Game({ source: stack('10', '10', '9', '7'), startingChips: 1000 });
+        new Table(document.getElementById('table')!, game);
+        expect(document.getElementById('chips')!.textContent).toBe('1000');
+        expect((document.getElementById('deal') as HTMLButtonElement).disabled).toBe(true);
+        expect(document.querySelectorAll('#chip-rack .chip')).toHaveLength(4);
+    });
+
+    it('plays a full round: bet, deal, stand, and win', () => {
+        const game = new Game({ source: stack('10', '10', '9', '7'), startingChips: 1000 }); // 19 vs 17
+        new Table(document.getElementById('table')!, game);
+
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.querySelector('#chip-rack .chip[data-value="5"]')); // bet 10
+        expect(document.getElementById('bet')!.textContent).toBe('10');
+        expect((document.getElementById('deal') as HTMLButtonElement).disabled).toBe(false);
+
+        click(document.getElementById('deal'));
+        expect(document.getElementById('chips')!.textContent).toBe('990');
+        expect(document.querySelectorAll('#dealer-hand .card')).toHaveLength(2);
+        expect(document.querySelectorAll('#player-hands .hand .card')).toHaveLength(2);
+        // hole card is face-down during the player's turn
+        expect(document.querySelector('#dealer-hand .card.flip')).not.toBeNull();
+        expect(document.getElementById('action-controls')!.hidden).toBe(false);
+        expect(document.getElementById('bet-controls')!.hidden).toBe(true);
+
+        click(document.querySelector('[data-action="stand"]'));
+        expect(game.phase).toBe('settled');
+        expect(document.getElementById('chips')!.textContent).toBe('1010');
+        expect(document.getElementById('banner')!.hidden).toBe(false);
+        expect(document.getElementById('banner')!.textContent).toContain('You win');
+        expect(document.querySelector('.pill--result')!.textContent).toBe('win');
+        // hole card revealed
+        expect(document.querySelector('#dealer-hand .card.flip.revealed')).not.toBeNull();
+    });
+
+    it('shows insurance controls when the dealer shows an ace', () => {
+        const game = new Game({ source: stack('10', 'A', '9', 'K'), startingChips: 1000 });
+        new Table(document.getElementById('table')!, game);
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.getElementById('deal'));
+        expect(game.phase).toBe('insurance');
+        expect(document.getElementById('insurance-controls')!.hidden).toBe(false);
+    });
+});
