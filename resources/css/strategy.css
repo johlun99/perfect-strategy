@@ -1,0 +1,125 @@
+/* Perfect Strategy coaching layer, on top of game.css. */
+
+/* --- scorecard (centered along the top, between Menu and mute) --------- */
+.coach-topbar { display: contents; }
+
+/* The scorecard is a top-centered HUD; drop the dealer's cards below it so
+   they never sit under the stats (strategy.css only loads on this page). */
+.dealer { padding-top: 4rem; }
+
+.coach-scorecard {
+    position: absolute;
+    top: 0.7rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    font-size: 0.8rem;
+}
+.score__item { color: var(--gold-soft); white-space: nowrap; padding: 0 0.35rem; }
+.score__item b { color: #fff; font-variant-numeric: tabular-nums; }
+
+/* --- chart toggle + panel --------------------------------------------- */
+.coach-chart-toggle {
+    position: absolute;
+    top: 3.3rem;
+    right: 1rem;
+    z-index: 6;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.7rem;
+}
+
+.coach-chart {
+    position: absolute;
+    inset: 4.5rem clamp(0.5rem, 3vw, 3rem) auto;
+    z-index: 20;
+    max-height: 80vh;
+    overflow: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    padding: 1rem;
+    border-radius: 14px;
+    background: rgba(6, 33, 15, 0.97);
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+}
+.chart__block h4 { margin: 0 0 0.4rem; color: var(--gold-soft); font-size: 0.85rem; text-align: center; }
+.chart__table { border-collapse: collapse; font-size: 0.72rem; }
+.chart__table th,
+.chart__table td {
+    width: 1.55rem;
+    height: 1.4rem;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.chart__table th { color: var(--gold-soft); font-weight: 600; }
+.chart__table td.cell { color: #06210f; font-weight: 700; }
+.cell--H { background: #dfe6df; }               /* hit    */
+.cell--S { background: #e6c85a; }               /* stand  */
+.cell--Dh,
+.cell--Ds { background: #5fb0e6; }              /* double */
+.cell--Rh { background: #d98f4f; }              /* surrender */
+.cell--P { background: #6fce8a; }               /* split  */
+.cell--current { outline: 3px solid #fff; outline-offset: -3px; box-shadow: 0 0 12px rgba(255, 255, 255, 0.9); }
+.chart__legend { width: 100%; margin: 0.2rem 0 0; text-align: center; color: rgba(255, 255, 255, 0.75); font-size: 0.72rem; }
+
+/* --- coached-button glow ---------------------------------------------- */
+.btn--coach {
+    color: var(--ink) !important;
+    background: var(--gold) !important;
+    animation: coach-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes coach-pulse {
+    from { box-shadow: 0 0 8px rgba(245, 230, 168, 0.7), 0 0 16px rgba(212, 175, 55, 0.5); }
+    to   { box-shadow: 0 0 16px rgba(245, 230, 168, 1), 0 0 34px rgba(212, 175, 55, 0.95); }
+}
+
+/* --- hint pill above the dock ----------------------------------------- */
+.coach-hint {
+    align-self: center;
+    max-width: min(90vw, 560px);
+    margin-bottom: 0.2rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #fff;
+    background: rgba(178, 58, 58, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* --- end-of-round mistake review -------------------------------------- */
+/* Float it in the gap between banner and player — NOT in the grid flow, or it
+   would steal the player's 1fr row and push the cards/dock off-screen. */
+.coach-review {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 6;
+    width: min(92vw, 620px);
+    max-height: 26vh;
+    overflow-y: auto;
+    padding: 0.6rem 1rem;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(178, 58, 58, 0.6);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+.review__title { margin: 0 0 0.35rem; font-size: 0.85rem; color: var(--gold-soft); }
+.review__list { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; color: #fff; }
+.review__list li { margin: 0.15rem 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .btn--coach { animation: none; box-shadow: 0 0 16px rgba(245, 230, 168, 1), 0 0 34px rgba(212, 175, 55, 0.95); }
+}

@@ -13,6 +13,8 @@ export default defineConfig({
                 'resources/js/menu.ts',
                 'resources/css/game.css',
                 'resources/js/game/main.ts',
+                'resources/css/strategy.css',
+                'resources/js/game/strategy.ts',
             ],
             refresh: true,
             fonts: [

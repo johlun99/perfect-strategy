@@ -29,12 +29,12 @@
                 <span class="tile__desc">Drill counting card values against the clock.</span>
             </div>
 
-            <div class="tile tile--disabled" aria-disabled="true">
-                <span class="badge">Coming soon</span>
+            <a class="tile tile--active" href="{{ route('strategy') }}" data-sound="click">
                 <span class="tile__icon">🎯</span>
                 <span class="tile__name">Perfect Strategy</span>
                 <span class="tile__desc">Practice optimal play and get flagged when you slip.</span>
-            </div>
+                <span class="tile__cta">Practice →</span>
+            </a>
         </div>
     </main>
 @endsection
