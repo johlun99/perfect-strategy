@@ -1,8 +1,9 @@
 import type { Game } from '../engine/game';
-import { handValue, isBust } from '../engine/hand';
+import { handValue, isBust, isBlackjack } from '../engine/hand';
 import type { Card } from '../engine/card';
 import { SoundManager } from './audio';
 import { createCardEl, createFaceDownEl, revealFaceDown } from './cards';
+import { celebrate } from './confetti';
 
 const DENOMINATIONS = [5, 25, 100, 500];
 const MIN_BET = 5;
@@ -45,7 +46,7 @@ export class Table {
         };
         this.lastChips = game.bankroll.balance;
 
-        this.sound.preload(['deal', 'flip', 'chip', 'chips-win', 'click', 'win', 'blackjack', 'lose', 'bust', 'push', 'shuffle']);
+        this.sound.preload(['deal', 'flip', 'place', 'chip', 'chips-win', 'click', 'win', 'blackjack', 'lose', 'bust', 'push', 'shuffle']);
         this.buildChipRack();
         this.bindEvents();
         this.render();
@@ -137,6 +138,8 @@ export class Table {
         this.holeEl = null;
         this.prevPlayerKeys = [];
         this.el.banner.hidden = true;
+        this.el.banner.classList.remove('banner--jackpot', 'banner--dealer-bj');
+        this.el.dealerHand.classList.remove('hand--dealer-bj');
         this.el.dealerTotal.hidden = true;
     }
 
@@ -177,6 +180,9 @@ export class Table {
         if (revealed) {
             this.el.dealerTotal.textContent = String(handValue(dealer).total);
             this.el.dealerTotal.hidden = false;
+            if (this.game.phase === 'settled' && isBlackjack(dealer)) {
+                this.el.dealerHand.classList.add('hand--dealer-bj');
+            }
         }
     }
 
@@ -200,6 +206,7 @@ export class Table {
             handEl.className = 'hand';
             const isActive = this.game.phase === 'playerTurn' && j === this.game.activeIndex;
             if (isActive) handEl.classList.add('hand--active');
+            if (hand.settlement?.outcome === 'blackjack') handEl.classList.add('hand--blackjack');
 
             for (const card of hand.cards) {
                 const key = cardKey(card);
@@ -224,7 +231,9 @@ export class Table {
             if (hand.settlement) {
                 const res = document.createElement('div');
                 const o = hand.settlement.outcome;
-                const tone = o === 'push' ? 'push' : hand.settlement.net > 0 ? 'win' : 'lose';
+                const tone = o === 'blackjack' ? 'blackjack'
+                    : o === 'push' ? 'push'
+                    : hand.settlement.net > 0 ? 'win' : 'lose';
                 res.className = `pill pill--result pill--${tone}`;
                 res.textContent = o;
                 wrap.append(res);
@@ -277,6 +286,7 @@ export class Table {
         const results = this.game.results;
         const net = results.reduce((s, r) => s + r.net, 0);
         const anyBlackjack = results.some((r) => r.outcome === 'blackjack');
+        const dealerBlackjack = isBlackjack(this.game.dealer);
         const anyBust = this.game.hands.some((h) => isBust(h.cards));
 
         let text: string;
@@ -284,9 +294,18 @@ export class Table {
             text = anyBlackjack ? 'Blackjack!' : 'You win';
             this.sound.play(anyBlackjack ? 'blackjack' : 'win');
             window.setTimeout(() => this.sound.play('chips-win'), 180);
+            if (anyBlackjack) {
+                this.el.banner.classList.add('banner--jackpot');
+                this.sound.play('place');
+                celebrate(this.el.playerHands, { variant: 'gold' });
+            }
         } else if (net < 0) {
-            text = 'Dealer wins';
+            text = dealerBlackjack ? 'Dealer Blackjack' : 'Dealer wins';
             this.sound.play(anyBust ? 'bust' : 'lose');
+            if (dealerBlackjack) {
+                this.el.banner.classList.add('banner--dealer-bj');
+                celebrate(this.el.dealerHand, { variant: 'ash' });
+            }
         } else {
             text = 'Push';
             this.sound.play('push');

@@ -98,4 +98,42 @@ describe('Table (UI integration)', () => {
         expect(game.phase).toBe('insurance');
         expect(document.getElementById('insurance-controls')!.hidden).toBe(false);
     });
+
+    it('celebrates a player natural blackjack with a jackpot banner and gold confetti', () => {
+        // player A+K = 21 (natural), dealer 9+7 = 16
+        const game = new Game({ source: stack('A', '9', 'K', '7'), startingChips: 1000 });
+        new Table(document.getElementById('table')!, game);
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.getElementById('deal'));
+
+        expect(game.phase).toBe('settled');
+        const banner = document.getElementById('banner')!;
+        expect(banner.textContent).toContain('Blackjack!');
+        expect(banner.classList.contains('banner--jackpot')).toBe(true);
+
+        const pill = document.querySelector('.pill--result')!;
+        expect(pill.classList.contains('pill--blackjack')).toBe(true);
+        expect(pill.textContent).toBe('blackjack');
+
+        expect(document.querySelector('#player-hands .hand--blackjack')).not.toBeNull();
+        expect(document.querySelectorAll('.fx-layer .confetti.confetti--gold').length).toBeGreaterThan(0);
+    });
+
+    it('shows a dealer blackjack loss screen with ash confetti', () => {
+        // player 10+7 = 17, dealer K+A = 21 (ten upcard -> peeks, no insurance prompt)
+        const game = new Game({ source: stack('10', 'K', '7', 'A'), startingChips: 1000 });
+        new Table(document.getElementById('table')!, game);
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.getElementById('deal'));
+
+        expect(game.phase).toBe('settled');
+        const banner = document.getElementById('banner')!;
+        expect(banner.textContent).toContain('Dealer Blackjack');
+        expect(banner.classList.contains('banner--dealer-bj')).toBe(true);
+
+        expect(document.getElementById('dealer-hand')!.classList.contains('hand--dealer-bj')).toBe(true);
+        expect(document.querySelectorAll('.fx-layer .confetti.confetti--ash').length).toBeGreaterThan(0);
+    });
 });
