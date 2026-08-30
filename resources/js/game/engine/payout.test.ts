@@ -67,6 +67,31 @@ describe('settleHand', () => {
         const r = settleHand({ ...base, player: hand('A', '10'), dealer: hand('A', 'K'), fromSplit: true });
         expect(r).toEqual({ outcome: 'lose', net: -10 });
     });
+
+    describe('Cherry: dealer wins pushes on 17/18/19', () => {
+        const cherry = { ...base, dealerWinsLowTies: true };
+
+        it.each([17, 18, 19])('loses a tie at %i', (total) => {
+            const filler: Rank = String(total - 10) as Rank; // 10 + n
+            const r = settleHand({ ...cherry, player: hand('10', filler), dealer: hand('10', filler) });
+            expect(r).toEqual({ outcome: 'lose', net: -10 });
+        });
+
+        it('still pushes a tie at 20', () => {
+            const r = settleHand({ ...cherry, player: hand('10', '10'), dealer: hand('10', '10') });
+            expect(r).toEqual({ outcome: 'push', net: 0 });
+        });
+
+        it('still pushes a tie at 21 (three cards)', () => {
+            const r = settleHand({ ...cherry, player: hand('7', '7', '7'), dealer: hand('10', '4', '7') });
+            expect(r).toEqual({ outcome: 'push', net: 0 });
+        });
+
+        it('does not affect ties when the rule is off', () => {
+            const r = settleHand({ ...base, player: hand('10', '8'), dealer: hand('10', '8') });
+            expect(r).toEqual({ outcome: 'push', net: 0 });
+        });
+    });
 });
 
 describe('settleInsurance', () => {

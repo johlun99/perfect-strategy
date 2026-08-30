@@ -1,12 +1,16 @@
 import type { Game } from '../engine/game';
 import { handValue, isBust, isBlackjack } from '../engine/hand';
 import type { Card } from '../engine/card';
+import type { RulesetId } from '../engine/rules';
+import { setSelectedRulesetId } from '../ruleset-store';
 import { SoundManager } from './audio';
 import { createCardEl, createFaceDownEl, revealFaceDown } from './cards';
 import { celebrate } from './confetti';
 
 const DENOMINATIONS = [5, 25, 100, 500];
 const MIN_BET = 5;
+
+const RULESET_ICON: Record<RulesetId, string> = { international: '🌍', cherry: '🍒' };
 
 const cardKey = (c: Card) => `${c.rank}${c.suit[0]}`;
 const $ = <T extends HTMLElement>(root: ParentNode, sel: string) => root.querySelector<T>(sel)!;
@@ -26,6 +30,7 @@ export class Table {
         chips: HTMLElement; bet: HTMLElement;
         betControls: HTMLElement; actionControls: HTMLElement; insuranceControls: HTMLElement;
         chipRack: HTMLElement; deal: HTMLButtonElement; clearBet: HTMLElement; mute: HTMLElement;
+        ruleset: HTMLButtonElement | null;
     };
 
     constructor(root: HTMLElement, private game: Game) {
@@ -43,6 +48,7 @@ export class Table {
             deal: $(root, '#deal'),
             clearBet: $(root, '#clear-bet'),
             mute: $(root, '#mute'),
+            ruleset: root.querySelector<HTMLButtonElement>('#ruleset-toggle'),
         };
         this.lastChips = game.bankroll.balance;
 
@@ -66,6 +72,17 @@ export class Table {
             const muted = this.sound.toggleMute();
             this.el.mute.textContent = muted ? '🔇' : '🔊';
         });
+
+        if (this.el.ruleset) {
+            const id = this.game.rules.id;
+            this.el.ruleset.textContent = `${RULESET_ICON[id]} ${this.game.rules.label}`;
+            // Switching rules reshapes the shoe and strategy, so reload into a clean game.
+            this.el.ruleset.addEventListener('click', () => {
+                const next: RulesetId = this.game.rules.id === 'cherry' ? 'international' : 'cherry';
+                setSelectedRulesetId(next);
+                location.reload();
+            });
+        }
 
         this.el.actionControls.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((btn) => {
             btn.addEventListener('click', () => this.doAction(btn.dataset.action!));

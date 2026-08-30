@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { recommend, shouldTakeInsurance, type LegalMoves } from './strategy';
-import { STANDARD_RULES } from './rules';
+import { STANDARD_RULES, CHERRY_RULES } from './rules';
 import type { Card, Rank } from './card';
 
 const c = (rank: Rank): Card => ({ rank, suit: 'spades' });
@@ -91,6 +91,32 @@ describe('recommend — multi-card hands', () => {
 
     it('reads soft totals from 3+ cards (no double after 3 cards)', () => {
         expect(act(hand('A', '2', '4'), '4', only({ canDouble: false }))).toBe('hit'); // soft 17 vs 4
+    });
+});
+
+describe('recommend — Cherry ruleset selects the Cherry table', () => {
+    const cAct = (player: Card[], up: Rank, legal: LegalMoves = ALL) =>
+        recommend(player, c(up), CHERRY_RULES, legal).action;
+
+    it('never surrenders (Cherry has no surrender)', () => {
+        expect(cAct(hand('10', '6'), '10')).not.toBe('surrender'); // 16 vs 10
+        expect(cAct(hand('9', '7'), '9')).not.toBe('surrender');   // 16 vs 9
+    });
+
+    it('stands 16 vs 10 under the tie rule', () => {
+        expect(cAct(hand('10', '6'), '10')).toBe('stand');
+    });
+
+    it('still doubles 11 vs 6', () => {
+        expect(cAct(hand('5', '6'), '6')).toBe('double');
+    });
+
+    it('explains a stiff stand vs a strong dealer by the tie rule, not "a 2 or 3"', () => {
+        const r = recommend(hand('10', '6'), c('10'), CHERRY_RULES, ALL); // 16 vs 10
+        expect(r.action).toBe('stand');
+        expect(r.reason).toMatch(/ties on 17, 18 and 19/i);
+        expect(r.reason).not.toMatch(/2 or 3/); // the old boilerplate must not leak through
+        expect(r.reason).toMatch(/a 10/); // names the actual upcard
     });
 });
 

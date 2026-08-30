@@ -45,10 +45,8 @@
 }
 
 .table__exit,
-.table__mute {
-    position: absolute;
-    top: 1rem;
-    z-index: 5;
+.table__mute,
+.table__ruleset {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(212, 175, 55, 0.4);
     color: var(--gold-soft);
@@ -56,10 +54,21 @@
     padding: 0.4rem 0.8rem;
     border-radius: 999px;
     font-size: 0.9rem;
+    line-height: 1;
     cursor: pointer;
 }
-.table__exit { left: 1rem; }
-.table__mute { right: 1rem; line-height: 1; }
+.table__exit { position: absolute; top: 1rem; left: 1rem; z-index: 5; }
+.table__topright {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 5;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.table__ruleset:hover:not(:disabled),
+.table__mute:hover { filter: brightness(1.12); }
 
 /* ---- hands ---------------------------------------------------------- */
 .dealer { align-self: start; }

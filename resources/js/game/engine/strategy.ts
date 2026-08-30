@@ -1,7 +1,8 @@
 import type { Card } from './card';
 import { rankValue } from './card';
 import { handValue } from './hand';
-import type { Ruleset } from './rules';
+import { CHERRY_RULES, type Ruleset, type RulesetId } from './rules';
+import { generateTables, type Code, type StrategyTables } from './ev';
 
 export type StrategyAction = 'hit' | 'stand' | 'double' | 'split' | 'surrender';
 
@@ -28,17 +29,14 @@ export function shouldTakeInsurance(): boolean {
     return false;
 }
 
-/**
- * Cell codes. `Dh`/`Ds` = double, else hit/stand. `Rh` = surrender, else hit.
- * `P` = split, else fall through to the hard/soft lookup.
- */
-type Code = 'H' | 'S' | 'Dh' | 'Ds' | 'Rh' | 'P';
+// Cell codes (`Code`, from ./ev): `Dh`/`Ds` = double else hit/stand, `Rh` =
+// surrender else hit, `P` = split (else fall through to the hard/soft lookup).
 
 /** Dealer upcard columns (Ace = 11), via rankValue. */
 const COLS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 
-// Standard 6-deck, dealer stands soft 17, DAS on, late surrender.
-// Rows are indexed by hand total (hard/soft) or pair rank value.
+// International 6-deck chart: dealer stands soft 17, DAS on, late surrender.
+// Hand-authored (with teaching in mind); rows are indexed by hand total or pair rank.
 
 const HARD: Record<number, Code[]> = {
     8:  ['H', 'H',  'H',  'H',  'H',  'H', 'H', 'H',  'H',  'H'],
@@ -77,7 +75,15 @@ const PAIRS: Record<number, Code[]> = {
     11: ['P', 'P',  'P',  'P',  'P',  'P', 'P', 'P', 'P', 'P'], // aces
 };
 
-let warnedS17 = false;
+const INTERNATIONAL_TABLES: StrategyTables = { HARD, SOFT, PAIRS, COLS };
+// Cherry has no published chart (its 17/18/19 tie rule is unique), so compute it.
+const CHERRY_TABLES: StrategyTables = generateTables(CHERRY_RULES);
+
+/** Strategy tables per ruleset, so the coach and chart match the rules in play. */
+export const TABLES_BY_ID: Record<RulesetId, StrategyTables> = {
+    international: INTERNATIONAL_TABLES,
+    cherry: CHERRY_TABLES,
+};
 
 export function recommend(
     player: Card[],
@@ -85,13 +91,7 @@ export function recommend(
     rules: Ruleset,
     legal: LegalMoves,
 ): Recommendation {
-    // Tables are built for a dealer who stands on soft 17. Warn (once) if the
-    // ruleset ever changes so we don't silently mis-coach.
-    if (rules.dealerHitsSoft17 && !warnedS17) {
-        warnedS17 = true;
-        console.warn('strategy tables assume dealer stands on soft 17; recommendations may be off');
-    }
-
+    const { HARD, SOFT, PAIRS } = TABLES_BY_ID[rules.id];
     const hv = handValue(player);
     const up = rankValue(dealerUp.rank);
     const col = COLS.indexOf(up as (typeof COLS)[number]);
@@ -102,24 +102,24 @@ export function recommend(
         const pairRank = rankValue(player[0].rank);
         const code = PAIRS[pairRank][col];
         if (code === 'P') {
-            if (legal.canSplit) return finalize('split', 'split', hv, up, pairRank);
+            if (legal.canSplit) return finalize('split', 'split', hv, up, rules, pairRank);
             // Can't split (max hands / no funds): fall through to hard/soft.
         } else {
-            return resolve(code, legal, hv, up, pairRank);
+            return resolve(code, legal, hv, up, rules, pairRank);
         }
     }
 
     // Soft totals (an ace still counts 11).
     if (hv.soft) {
-        if (hv.total >= 21) return finalize('stand', 'stand', hv, up);
-        if (hv.total >= 13) return resolve(SOFT[hv.total][col], legal, hv, up);
-        return finalize('hit', 'hit', hv, up); // soft 12 (e.g. unsplittable A,A)
+        if (hv.total >= 21) return finalize('stand', 'stand', hv, up, rules);
+        if (hv.total >= 13) return resolve(SOFT[hv.total][col], legal, hv, up, rules);
+        return finalize('hit', 'hit', hv, up, rules); // soft 12 (e.g. unsplittable A,A)
     }
 
     // Hard totals.
-    if (hv.total <= 8) return finalize('hit', 'hit', hv, up);
-    if (hv.total >= 17) return finalize('stand', 'stand', hv, up);
-    return resolve(HARD[hv.total][col], legal, hv, up);
+    if (hv.total <= 8) return finalize('hit', 'hit', hv, up, rules);
+    if (hv.total >= 17) return finalize('stand', 'stand', hv, up, rules);
+    return resolve(HARD[hv.total][col], legal, hv, up, rules);
 }
 
 /** Turn a table code into a legal action, keeping the textbook `ideal`. */
@@ -128,15 +128,16 @@ function resolve(
     legal: LegalMoves,
     hv: { total: number; soft: boolean },
     up: number,
+    rules: Ruleset,
     pairRank?: number,
 ): Recommendation {
     switch (code) {
-        case 'H': return finalize('hit', 'hit', hv, up, pairRank);
-        case 'S': return finalize('stand', 'stand', hv, up, pairRank);
-        case 'Dh': return finalize(legal.canDouble ? 'double' : 'hit', 'double', hv, up, pairRank);
-        case 'Ds': return finalize(legal.canDouble ? 'double' : 'stand', 'double', hv, up, pairRank);
-        case 'Rh': return finalize(legal.canSurrender ? 'surrender' : 'hit', 'surrender', hv, up, pairRank);
-        case 'P': return finalize('split', 'split', hv, up, pairRank);
+        case 'H': return finalize('hit', 'hit', hv, up, rules, pairRank);
+        case 'S': return finalize('stand', 'stand', hv, up, rules, pairRank);
+        case 'Dh': return finalize(legal.canDouble ? 'double' : 'hit', 'double', hv, up, rules, pairRank);
+        case 'Ds': return finalize(legal.canDouble ? 'double' : 'stand', 'double', hv, up, rules, pairRank);
+        case 'Rh': return finalize(legal.canSurrender ? 'surrender' : 'hit', 'surrender', hv, up, rules, pairRank);
+        case 'P': return finalize('split', 'split', hv, up, rules, pairRank);
     }
 }
 
@@ -145,9 +146,10 @@ function finalize(
     ideal: StrategyAction,
     hv: { total: number; soft: boolean },
     up: number,
+    rules: Ruleset,
     pairRank?: number,
 ): Recommendation {
-    return { action, ideal, reason: reasonFor(action, ideal, hv, up, pairRank) };
+    return { action, ideal, reason: reasonFor(action, ideal, hv, up, rules, pairRank) };
 }
 
 /**
@@ -160,6 +162,7 @@ function reasonFor(
     ideal: StrategyAction,
     hv: { total: number; soft: boolean },
     up: number,
+    rules: Ruleset,
     pairRank?: number,
 ): string {
     const upLabel = up === 11 ? 'an Ace' : `a ${up}`;
@@ -202,6 +205,11 @@ function reasonFor(
         case 'stand':
             if (pairRank === 10) return `Never split tens. A pair of tens is 20 — one of the strongest hands there is. Splitting throws away a near-certain winner to chase two weaker hands. Just stand.`;
             if (pairRank === 9) return `Stand on 18. Splitting 9s here would only build two weaker hands — your 18 already beats the 17 the dealer most often makes showing ${upLabel}.`;
+            if (stiff && rules.dealerWinsLowTies && up >= 7) {
+                // Cherry only: standing on a stiff vs a strong dealer. Hitting toward
+                // 17–19 barely helps because the dealer wins those ties.
+                return `Stand. Normally you'd hit a stiff ${hv.total} against ${upLabel}. But under Cherry rules the dealer wins ties on 17, 18 and 19, so drawing into that range gains you almost nothing — the risk of busting outweighs the slim upside, so standing loses the least over time.`;
+            }
             if (stiff) return `Stand. Your ${hv.total} is a "stiff" — a hard 12–16 that busts on any ten and most other cards. But ${dealerBust}, so the odds favour making the dealer draw and risk going over, rather than risking it yourself.`;
             if (hv.soft) return `Stand. A soft ${hv.total} is already a strong hand; drawing would more likely weaken it than help, so keep it.`;
             return `Stand. At ${hv.total} the chance of improving is tiny and another card would usually bust you — hold what you have.`;
@@ -216,5 +224,5 @@ function reasonFor(
     }
 }
 
-/** The raw strategy tables, exported so the UI chart can't drift from the engine. */
-export const TABLES = { HARD, SOFT, PAIRS, COLS };
+/** The international tables, exported so the UI chart can't drift from the engine. */
+export const TABLES = INTERNATIONAL_TABLES;

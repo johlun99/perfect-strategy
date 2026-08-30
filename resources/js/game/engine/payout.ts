@@ -17,10 +17,12 @@ export interface SettleInput {
     surrendered?: boolean;
     /** A hand produced by splitting: a two-card 21 counts as an ordinary 21. */
     fromSplit?: boolean;
+    /** Cherry rule: the dealer wins pushes on 17/18/19 (20/21 still push). */
+    dealerWinsLowTies?: boolean;
 }
 
 export function settleHand(input: SettleInput): Settlement {
-    const { player, dealer, bet, blackjackPayout, surrendered, fromSplit } = input;
+    const { player, dealer, bet, blackjackPayout, surrendered, fromSplit, dealerWinsLowTies } = input;
 
     if (surrendered) {
         return { outcome: 'surrender', net: -bet / 2 };
@@ -41,6 +43,11 @@ export function settleHand(input: SettleInput): Settlement {
 
     if (playerTotal > dealerTotal) return { outcome: 'win', net: bet };
     if (playerTotal < dealerTotal) return { outcome: 'lose', net: -bet };
+
+    // Equal totals. Cherry hands 17/18/19 pushes to the dealer; 20/21 still push.
+    if (dealerWinsLowTies && playerTotal >= 17 && playerTotal <= 19) {
+        return { outcome: 'lose', net: -bet };
+    }
     return { outcome: 'push', net: 0 };
 }
 

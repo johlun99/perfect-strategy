@@ -36,5 +36,14 @@
                 <span class="tile__cta">Practice →</span>
             </a>
         </div>
+
+        <section class="ruleset" aria-label="House rules">
+            <span class="ruleset__label">House rules</span>
+            <div class="ruleset__switch" role="group">
+                <button class="ruleset__opt" data-ruleset="international" data-sound="click">🌍 International</button>
+                <button class="ruleset__opt" data-ruleset="cherry" data-sound="click">🍒 Cherry</button>
+            </div>
+            <p class="ruleset__hint" id="ruleset-hint"></p>
+        </section>
     </main>
 @endsection

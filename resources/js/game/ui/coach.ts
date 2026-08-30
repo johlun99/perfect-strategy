@@ -1,12 +1,12 @@
 import type { Game } from '../engine/game';
 import { handValue } from '../engine/hand';
 import { rankValue } from '../engine/card';
-import { recommend, shouldTakeInsurance, INSURANCE_REASON, TABLES } from '../engine/strategy';
+import { recommend, shouldTakeInsurance, INSURANCE_REASON, TABLES_BY_ID } from '../engine/strategy';
+import type { Code } from '../engine/ev';
 import { SoundManager } from './audio';
 
 const $ = <T extends HTMLElement>(root: ParentNode, sel: string) => root.querySelector<T>(sel);
 
-type Code = 'H' | 'S' | 'Dh' | 'Ds' | 'Rh' | 'P';
 const CODE_LABEL: Record<Code, string> = { H: 'H', S: 'S', Dh: 'D', Ds: 'D', Rh: 'R', P: 'P' };
 const colLabel = (up: number) => (up === 11 ? 'A' : String(up));
 
@@ -176,7 +176,7 @@ export class StrategyCoach {
 
     private buildChart(): void {
         if (!this.chartEl) return;
-        const { HARD, SOFT, PAIRS, COLS } = TABLES;
+        const { HARD, SOFT, PAIRS, COLS } = TABLES_BY_ID[this.game.rules.id];
         const header = ['', ...COLS.map(colLabel)];
 
         const section = (title: string, name: string, rows: Record<number, Code[]>, label: (k: number) => string) => {

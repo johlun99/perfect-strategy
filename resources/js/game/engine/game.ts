@@ -89,17 +89,26 @@ export class Game {
 
     canHit(): boolean {
         const h = this.activeHand;
-        return !!h && !h.done;
+        if (!h || h.done) return false;
+        // A split ace that hasn't been resplit gets its one card only.
+        if (h.isSplitAce && this.rules.splitAcesOneCard) return false;
+        return true;
     }
 
     canStand(): boolean {
-        return this.canHit();
+        const h = this.activeHand;
+        return !!h && !h.done;
     }
 
     canDouble(): boolean {
         const h = this.activeHand;
         if (!h || h.done || h.cards.length !== 2) return false;
         if (h.fromSplit && !this.rules.doubleAfterSplit) return false;
+        if (this.rules.doubleTotals) {
+            const { total, soft } = handValue(h.cards);
+            const hardTotal = soft ? total - 10 : total; // ace as 1
+            if (!this.rules.doubleTotals.includes(hardTotal)) return false;
+        }
         return this.bankroll.canAfford(h.bet);
     }
 
@@ -205,12 +214,24 @@ export class Game {
         newHand.cards.push(this.source.draw());
 
         if (splitting_aces && this.rules.splitAcesOneCard) {
-            h.done = true;
-            newHand.done = true;
+            // Each split ace takes exactly one card, unless it drew another ace
+            // and the rules allow resplitting it (Cherry) — then it stays live.
+            this.completeSplitAce(h);
+            this.completeSplitAce(newHand);
             this.advance();
         } else {
             this.emit('change');
         }
+    }
+
+    /** Mark a one-card split ace done, unless it can still be resplit. */
+    private completeSplitAce(h: PlayerHand): void {
+        const canResplit =
+            this.rules.resplitAces &&
+            h.cards.length === 2 &&
+            h.cards[1].rank === 'A' &&
+            this._hands.length < this.rules.maxSplitHands;
+        if (!canResplit) h.done = true;
     }
 
     surrender(): void {
@@ -295,6 +316,7 @@ export class Game {
                 blackjackPayout: this.rules.blackjackPayout,
                 surrendered: h.surrendered,
                 fromSplit: h.fromSplit,
+                dealerWinsLowTies: this.rules.dealerWinsLowTies,
             });
             this.bankroll.credit(h.bet + h.settlement.net);
         }

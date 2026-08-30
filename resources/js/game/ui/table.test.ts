@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Game } from '../engine/game';
 import type { CardSource } from '../engine/shoe';
 import type { Card, Rank } from '../engine/card';
+import { CHERRY_RULES } from '../engine/rules';
 import { Table } from './table';
 
 const c = (rank: Rank): Card => ({ rank, suit: 'spades' });
@@ -24,6 +25,7 @@ class FakeAudio {
 
 const MARKUP = `
 <main id="table">
+  <button id="ruleset-toggle"></button>
   <button id="mute"></button>
   <div id="dealer-hand"></div><div id="dealer-total" hidden></div>
   <div id="banner" hidden></div>
@@ -118,6 +120,28 @@ describe('Table (UI integration)', () => {
 
         expect(document.querySelector('#player-hands .hand--blackjack')).not.toBeNull();
         expect(document.querySelectorAll('.fx-layer .confetti.confetti--gold').length).toBeGreaterThan(0);
+    });
+
+    it('labels the ruleset toggle and flips the stored ruleset on click', () => {
+        const store = new Map<string, string>();
+        vi.stubGlobal('localStorage', {
+            getItem: (k: string) => store.get(k) ?? null,
+            setItem: (k: string, v: string) => void store.set(k, v),
+            removeItem: (k: string) => void store.delete(k),
+            clear: () => store.clear(),
+        });
+        const reload = vi.fn();
+        Object.defineProperty(window, 'location', { value: { reload }, writable: true });
+
+        const game = new Game({ source: stack('10', '10', '9', '7'), startingChips: 1000, rules: CHERRY_RULES });
+        new Table(document.getElementById('table')!, game);
+
+        const btn = document.getElementById('ruleset-toggle')!;
+        expect(btn.textContent).toContain('Cherry');
+
+        btn.click();
+        expect(store.get('bj:ruleset')).toBe('international'); // flipped away from Cherry
+        expect(reload).toHaveBeenCalled();
     });
 
     it('shows a dealer blackjack loss screen with ash confetti', () => {

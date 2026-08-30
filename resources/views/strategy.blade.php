@@ -10,7 +10,10 @@
 @section('content')
     <main id="table" class="table">
         <a class="table__exit" href="{{ route('menu') }}" data-sound="click">‹ Menu</a>
-        <button class="table__mute" id="mute" title="Toggle sound" aria-label="Toggle sound">🔊</button>
+        <div class="table__topright">
+            <button class="table__ruleset" id="ruleset-toggle" title="Switch ruleset (International / Cherry)" aria-label="Switch ruleset"></button>
+            <button class="table__mute" id="mute" title="Toggle sound" aria-label="Toggle sound">🔊</button>
+        </div>
 
         <div class="coach-topbar">
             <div class="coach-scorecard" id="coach-scorecard"></div>

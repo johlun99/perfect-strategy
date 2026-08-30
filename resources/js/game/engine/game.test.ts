@@ -3,6 +3,7 @@ import { Game } from './game';
 import type { CardSource } from './shoe';
 import type { Card, Rank } from './card';
 import { handValue } from './hand';
+import { CHERRY_RULES } from './rules';
 
 const c = (rank: Rank): Card => ({ rank, suit: 'spades' });
 
@@ -20,6 +21,9 @@ function stack(...ranks: Rank[]): CardSource {
 // Deal order is player, dealer, player, dealer — so ranks are interleaved.
 const newGame = (source: CardSource, chips = 1000) =>
     new Game({ source, startingChips: chips });
+
+const cherryGame = (source: CardSource, chips = 1000) =>
+    new Game({ source, startingChips: chips, rules: CHERRY_RULES });
 
 describe('Game — dealing', () => {
     it('deals two cards each and opens the player turn', () => {
@@ -157,5 +161,65 @@ describe('Game — dealer play', () => {
         expect(g.dealer).toHaveLength(2); // did not draw
         expect(handValue(g.dealer)).toEqual({ total: 17, soft: true });
         expect(g.results[0].outcome).toBe('win');
+    });
+});
+
+describe('Game — Cherry rules', () => {
+    it('loses a tied 18 to the dealer', () => {
+        const g = cherryGame(stack('10', '10', '8', '8')); // player 18 vs dealer 18
+        g.deal(10);
+        g.stand();
+        expect(g.results[0].outcome).toBe('lose');
+        expect(g.bankroll.balance).toBe(990);
+    });
+
+    it('restricts doubling to two-card totals of 7–11', () => {
+        // p1, d1, p2, d2 -> player is the two non-dealer cards.
+        const canDouble = (p1: Rank, p2: Rank) => {
+            const g = cherryGame(stack(p1, '10', p2, '7'));
+            g.deal(10);
+            return g.canDouble();
+        };
+        expect(canDouble('5', '6')).toBe(true);  // hard 11
+        expect(canDouble('10', '2')).toBe(false); // hard 12
+        expect(canDouble('A', '6')).toBe(true);  // soft 17 -> ace as 1 -> 7
+        expect(canDouble('A', '2')).toBe(false); // soft 13 -> hard 3
+    });
+
+    it('never offers surrender', () => {
+        const g = cherryGame(stack('10', '10', '6', '7')); // 16 vs 17
+        g.deal(10);
+        expect(g.canSurrender()).toBe(false);
+    });
+
+    it('allows resplitting aces and settles every hand', () => {
+        // player A,A vs dealer 10,7; split draws A,9 then resplit draws 9,9
+        const g = cherryGame(stack('A', '10', 'A', '7', 'A', '9', '9', '9'));
+        g.deal(10);
+        g.split();
+        expect(g.phase).toBe('playerTurn'); // the A,A hand stayed live
+        expect(g.canSplit()).toBe(true);
+        g.split();
+        expect(g.hands).toHaveLength(3);
+        expect(g.phase).toBe('settled'); // all one-card ace hands auto-complete
+        expect(g.results.every((r) => r.outcome === 'win')).toBe(true); // three A,9 (20) vs 17
+    });
+
+    it('does not cap the number of split hands at 4', () => {
+        const eights = stack('8', '10', '8', '7', '8', '8', '8', '8', '8', '8');
+        const g = cherryGame(eights);
+        g.deal(10);
+        g.split(); g.split(); g.split(); // -> four hands of 8,8
+        expect(g.hands).toHaveLength(4);
+        expect(g.canSplit()).toBe(true); // still splittable under Cherry
+    });
+
+    it('caps split hands at 4 under international rules', () => {
+        const eights = stack('8', '10', '8', '7', '8', '8', '8', '8', '8', '8');
+        const g = newGame(eights);
+        g.deal(10);
+        g.split(); g.split(); g.split();
+        expect(g.hands).toHaveLength(4);
+        expect(g.canSplit()).toBe(false);
     });
 });
