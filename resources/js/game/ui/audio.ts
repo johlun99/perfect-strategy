@@ -1,11 +1,13 @@
 export type SoundName =
     | 'deal' | 'flip' | 'place' | 'shuffle'
     | 'chip' | 'chips-win'
+    | 'chip-slide' | 'chip-stack' | 'chip-clirr'
     | 'click' | 'win' | 'blackjack' | 'lose' | 'bust' | 'push' | 'wrong';
 
 const VOLUMES: Partial<Record<SoundName, number>> = {
     deal: 0.6, flip: 0.6, place: 0.5, shuffle: 0.7,
     chip: 0.7, 'chips-win': 0.8,
+    'chip-slide': 0.5, 'chip-stack': 0.7, 'chip-clirr': 0.8,
     click: 0.5, win: 0.7, blackjack: 0.9, lose: 0.6, bust: 0.7, push: 0.5, wrong: 0.5,
 };
 

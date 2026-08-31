@@ -218,6 +218,67 @@
 .chip--100 { --chip: #2c3e75; }
 .chip--500 { --chip: #6c3483; }
 
+/* ---- marks (physical chips on the felt) ----------------------------- */
+/* The betting circle the placed bet's chips stack on. Anchored to the table's
+   bottom-right corner (out of flow) so it stays put as the dock's controls swap
+   between phases and never lands on the cards. Visual + measurement anchor only. */
+.bet-spot {
+    position: absolute;
+    right: 8%; bottom: 7rem;
+    width: 74px; height: 74px;
+    border-radius: 50%;
+    border: 2px dashed rgba(212, 175, 55, 0.45);
+    box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+
+/* Persistent overlay the chip tokens travel in (kept apart from .fx-layer). */
+.mark-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 15;
+}
+.mark {
+    --chip: #b23a3a;
+    position: absolute;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 50% 50%, var(--chip) 0 54%, #fff 54% 60%, var(--chip) 60% 100%);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45), inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+    will-change: transform, opacity;
+}
+.mark::before {
+    content: '';
+    position: absolute; inset: 6px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.65);
+}
+.mark--5   { --chip: #c0392b; }
+.mark--25  { --chip: #27795b; }
+.mark--100 { --chip: #2c3e75; }
+.mark--500 { --chip: #6c3483; }
+
+/* entrance: slide from the rack (--from-x/--from-y set inline in chips.ts) */
+.mark--sliding { animation: mark-slide 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes mark-slide {
+    from { transform: translate(var(--from-x, 0), var(--from-y, 0)) scale(0.9); }
+    to   { transform: translate(0, 0) scale(1); }
+}
+/* exit toward bank or dealer (--to-x/--to-y set inline) */
+.mark--to-bank, .mark--to-dealer { animation: mark-depart 0.5s cubic-bezier(0.4, 0, 0.6, 1) both; }
+@keyframes mark-depart {
+    from { transform: translate(0, 0) scale(1); opacity: 1; }
+    to   { transform: translate(var(--to-x, 0), var(--to-y, 0)) scale(0.55); opacity: 0; }
+}
+/* discard in place (Clear) */
+.mark--clearing { animation: mark-clear 0.28s ease-in both; }
+@keyframes mark-clear {
+    to { transform: scale(0.4); opacity: 0; }
+}
+
 /* ---- buttons -------------------------------------------------------- */
 .btn {
     font: inherit;
@@ -317,7 +378,8 @@
 @media (prefers-reduced-motion: reduce) {
     .card, .card--dealing, .banner:not([hidden]), .counter__value.bump,
     .confetti, .banner--jackpot, .banner--dealer-bj, .hand--blackjack, .hand--dealer-bj,
-    .hand--active {
+    .hand--active,
+    .mark, .mark--sliding, .mark--to-bank, .mark--to-dealer, .mark--clearing {
         animation: none !important;
         transition: none !important;
     }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Game } from '../engine/game';
 import type { CardSource } from '../engine/shoe';
 import type { Card, Rank } from '../engine/card';
@@ -30,6 +30,7 @@ const MARKUP = `
   <div id="dealer-hand"></div><div id="dealer-total" hidden></div>
   <div id="banner" hidden></div>
   <div id="player-hands"></div>
+  <div id="bet-spot"></div>
   <span id="chips">0</span><span id="bet">0</span>
   <div id="bet-controls">
     <div id="chip-rack"></div>
@@ -53,6 +54,10 @@ describe('Table (UI integration)', () => {
         (globalThis as unknown as { Audio: unknown }).Audio = FakeAudio;
         vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 0; });
         document.body.innerHTML = MARKUP;
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals(); // don't leak per-test matchMedia stubs into later tests
     });
 
     it('renders the starting bankroll and disables Deal with no bet', () => {
@@ -120,6 +125,46 @@ describe('Table (UI integration)', () => {
 
         expect(document.querySelector('#player-hands .hand--blackjack')).not.toBeNull();
         expect(document.querySelectorAll('.fx-layer .confetti.confetti--gold').length).toBeGreaterThan(0);
+    });
+
+    it('lays a physical chip on the felt for each rack click', () => {
+        const game = new Game({ source: stack('10', '10', '9', '7'), startingChips: 1000 });
+        new Table(document.getElementById('table')!, game);
+
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.querySelector('#chip-rack .chip[data-value="25"]'));
+
+        expect(document.querySelectorAll('.mark-layer .mark')).toHaveLength(2);
+        expect(document.querySelector('.mark-layer .mark--5')).not.toBeNull();
+        expect(document.querySelector('.mark-layer .mark--25')).not.toBeNull();
+    });
+
+    it('clears the physical chips when the bet is cleared', () => {
+        // reduced motion so the discard removes tokens synchronously (no animationend in jsdom)
+        vi.stubGlobal('matchMedia', () => ({ matches: true }));
+        const game = new Game({ source: stack('10', '10', '9', '7'), startingChips: 1000 });
+        new Table(document.getElementById('table')!, game);
+
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        expect(document.querySelectorAll('.mark-layer .mark')).toHaveLength(2);
+
+        click(document.getElementById('clear-bet'));
+        expect(document.querySelectorAll('.mark-layer .mark')).toHaveLength(0);
+    });
+
+    it('clears the chip stack off the felt once the round settles', () => {
+        vi.stubGlobal('matchMedia', () => ({ matches: true }));
+        const game = new Game({ source: stack('10', '10', '9', '7'), startingChips: 1000 }); // 19 vs 17
+        new Table(document.getElementById('table')!, game);
+
+        click(document.querySelector('#chip-rack .chip[data-value="5"]'));
+        click(document.getElementById('deal'));
+        expect(document.querySelectorAll('.mark-layer .mark')).toHaveLength(1);
+
+        click(document.querySelector('[data-action="stand"]'));
+        expect(game.phase).toBe('settled');
+        expect(document.querySelectorAll('.mark-layer .mark')).toHaveLength(0);
     });
 
     it('labels the ruleset toggle and flips the stored ruleset on click', () => {

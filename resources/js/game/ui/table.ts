@@ -4,6 +4,7 @@ import type { Card } from '../engine/card';
 import type { RulesetId } from '../engine/rules';
 import { setSelectedRulesetId } from '../ruleset-store';
 import { SoundManager } from './audio';
+import { MarkTray } from './chips';
 import { createCardEl, createFaceDownEl, revealFaceDown } from './cards';
 import { celebrate } from './confetti';
 
@@ -18,6 +19,7 @@ const $ = <T extends HTMLElement>(root: ParentNode, sel: string) => root.querySe
 /** Wires the blackjack engine to the DOM: renders state and plays sounds. */
 export class Table {
     private sound = new SoundManager();
+    private marks = new MarkTray((name) => this.sound.play(name));
     private pendingBet = 0;
     private prevPlayerKeys: string[] = [];
     private holeEl: HTMLElement | null = null;
@@ -27,6 +29,7 @@ export class Table {
     private el: {
         dealerHand: HTMLElement; dealerTotal: HTMLElement;
         playerHands: HTMLElement; banner: HTMLElement;
+        betSpot: HTMLElement | null;
         chips: HTMLElement; bet: HTMLElement;
         betControls: HTMLElement; actionControls: HTMLElement; insuranceControls: HTMLElement;
         chipRack: HTMLElement; deal: HTMLButtonElement; clearBet: HTMLElement; mute: HTMLElement;
@@ -39,6 +42,7 @@ export class Table {
             dealerTotal: $(root, '#dealer-total'),
             playerHands: $(root, '#player-hands'),
             banner: $(root, '#banner'),
+            betSpot: root.querySelector<HTMLElement>('#bet-spot'),
             chips: $(root, '#chips'),
             bet: $(root, '#bet'),
             betControls: $(root, '#bet-controls'),
@@ -52,7 +56,7 @@ export class Table {
         };
         this.lastChips = game.bankroll.balance;
 
-        this.sound.preload(['deal', 'flip', 'place', 'chip', 'chips-win', 'click', 'win', 'blackjack', 'lose', 'bust', 'push', 'shuffle']);
+        this.sound.preload(['deal', 'flip', 'place', 'chip', 'chips-win', 'chip-slide', 'chip-stack', 'chip-clirr', 'click', 'win', 'blackjack', 'lose', 'bust', 'push', 'shuffle']);
         this.buildChipRack();
         this.bindEvents();
         this.render();
@@ -98,7 +102,7 @@ export class Table {
             chip.className = `chip chip--${value}`;
             chip.dataset.value = String(value);
             chip.innerHTML = `<span>${value}</span>`;
-            chip.addEventListener('click', () => this.addChip(value));
+            chip.addEventListener('click', () => this.addChip(value, chip));
             this.el.chipRack.append(chip);
         }
     }
@@ -109,19 +113,34 @@ export class Table {
         return this.game.phase === 'betting' || this.game.phase === 'settled';
     }
 
-    private addChip(value: number): void {
+    private addChip(value: number, from: HTMLElement): void {
         if (!this.canBet()) return;
         if (!this.game.bankroll.canAfford(this.pendingBet + value)) return;
         this.pendingBet += value;
-        this.sound.play('chip');
+        if (this.el.betSpot) this.marks.place(value, from, this.el.betSpot);
         this.render();
     }
 
     private clearBet(): void {
         if (!this.canBet()) return;
         this.pendingBet = 0;
+        this.marks.clear();
         this.sound.play('click');
         this.render();
+    }
+
+    /** Break `amount` into denomination chips and slide them onto the bet spot.
+     *  Used for the extra wager a Double or Split adds (not click-driven). */
+    private placeAmount(amount: number): void {
+        if (!this.el.betSpot) return;
+        let remaining = amount;
+        for (const value of [...DENOMINATIONS].reverse()) {
+            while (remaining >= value) {
+                const from = this.el.chipRack.querySelector<HTMLElement>(`.chip[data-value="${value}"]`);
+                this.marks.place(value, from ?? this.el.betSpot, this.el.betSpot);
+                remaining -= value;
+            }
+        }
     }
 
     private onDeal(): void {
@@ -135,6 +154,12 @@ export class Table {
 
     private doAction(name: string): void {
         this.sound.play('click');
+        // Double/Split raise the wager by the active hand's bet. Lay the extra
+        // chips *before* the engine call, which may settle the round immediately
+        // and slide the whole stack away (see onRoundEnded).
+        if ((name === 'double' && this.game.canDouble()) || (name === 'split' && this.game.canSplit())) {
+            this.placeAmount(this.game.hands[this.game.activeIndex].bet);
+        }
         try {
             (this.game as unknown as Record<string, () => void>)[name]();
         } catch {
@@ -165,6 +190,7 @@ export class Table {
         this.renderDealer();
         this.renderPlayers();
         this.renderDock();
+        if (this.el.betSpot) this.marks.reflow(this.el.betSpot); // keep chips glued to the spot as the layout shifts
     }
 
     private animateNew(el: HTMLElement): void {
@@ -331,6 +357,12 @@ export class Table {
         const sign = net > 0 ? `+${net}` : net < 0 ? String(net) : '';
         this.el.banner.textContent = sign ? `${text}  ${sign}` : text;
         this.el.banner.hidden = false;
+
+        // Resolve the felt stack: win/push slides it back to the bank, loss to the dealer.
+        if (this.el.betSpot) {
+            if (net < 0) this.marks.toDealer(this.el.betSpot, this.el.dealerHand);
+            else this.marks.toBank(this.el.betSpot, this.el.chips);
+        }
 
         this.pendingBet = 0;
         this.render();

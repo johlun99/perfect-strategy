@@ -32,6 +32,7 @@
 
         <section class="player">
             <div class="hands" id="player-hands"></div>
+            <div class="bet-spot" id="bet-spot" aria-hidden="true"></div>
         </section>
 
         <footer class="dock">
