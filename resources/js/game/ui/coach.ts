@@ -195,20 +195,28 @@ export class StrategyCoach {
         const pairLabel = (k: number) => (k === 11 ? 'A,A' : `${k},${k}`);
 
         this.chartEl.innerHTML =
-            section('Hard totals', 'hard', HARD, String) +
-            section('Soft totals', 'soft', SOFT, softLabel) +
-            section('Pairs', 'pairs', PAIRS, pairLabel) +
+            `<div class="chart__head">` +
+                `<span class="chart__title">Basic strategy · ${this.game.rules.label}</span>` +
+                `<button class="chart__close" id="coach-chart-close" type="button" aria-label="Close strategy chart" title="Close">×</button>` +
+            `</div>` +
+            `<p class="chart__axes"><span>↓ rows — your hand</span><span>→ columns — dealer's upcard</span></p>` +
+            `<div class="chart__blocks">` +
+                section('Hard totals', 'hard', HARD, String) +
+                section('Soft totals', 'soft', SOFT, softLabel) +
+                section('Pairs', 'pairs', PAIRS, pairLabel) +
+            `</div>` +
             `<p class="chart__legend">H hit · S stand · D double · R surrender · P split</p>`;
     }
 
     private setupChartToggle(): void {
         const toggle = $<HTMLButtonElement>(this.root, '#coach-chart-toggle');
         if (!toggle || !this.chartEl) return;
-        toggle.addEventListener('click', () => {
-            const show = this.chartEl!.hidden;
-            this.chartEl!.hidden = !show;
-            toggle.setAttribute('aria-expanded', String(show));
-        });
+        const setOpen = (open: boolean) => {
+            this.chartEl!.hidden = !open;
+            toggle.setAttribute('aria-expanded', String(open));
+        };
+        toggle.addEventListener('click', () => setOpen(!!this.chartEl!.hidden));
+        $(this.chartEl, '#coach-chart-close')?.addEventListener('click', () => setOpen(false));
     }
 
     private highlightChart(): void {

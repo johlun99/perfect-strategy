@@ -149,6 +149,16 @@ describe('StrategyCoach (blocking trainer)', () => {
         expect(chart.querySelectorAll('td.cell').length).toBeGreaterThan(0);
     });
 
+    it('closes the strategy chart with the × button', () => {
+        setup(stack('10', '6', '9', '9'));
+        const chart = document.getElementById('coach-chart')!;
+        click(document.getElementById('coach-chart-toggle'));
+        expect(chart.hidden).toBe(false);
+
+        click(chart.querySelector('#coach-chart-close'));
+        expect(chart.hidden).toBe(true);
+    });
+
     it('lists the round mistakes in the review at round end', () => {
         setup(stack('10', '6', '2', '9', '7')); // 12 vs 6
         deal();
