@@ -15,6 +15,8 @@ export default defineConfig({
                 'resources/js/game/main.ts',
                 'resources/css/strategy.css',
                 'resources/js/game/strategy.ts',
+                'resources/css/hand-value.css',
+                'resources/js/game/hand-value.ts',
             ],
             refresh: true,
             fonts: [

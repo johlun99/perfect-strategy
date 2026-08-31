@@ -1,0 +1,184 @@
+/* "Hand Value" quiz layer, on top of game.css. */
+
+/* This page centers a single hand + answer buttons instead of the play grid. */
+.game-page .table {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1.5rem, 5vh, 3rem);
+}
+
+/* --- countdown bar (pinned to the top edge) --------------------------- */
+.quiz-timer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+.quiz-timer__bar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-soft), var(--gold));
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.7);
+}
+
+/* --- prompt + hand ---------------------------------------------------- */
+.quiz {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.4rem;
+}
+.quiz__prompt {
+    margin: 0;
+    color: var(--gold-soft);
+    font-size: clamp(1rem, 2.4vw, 1.4rem);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-align: center;
+}
+/* scale the hand up a touch — it's the whole focus of this mode */
+.quiz .hand {
+    --card-w: clamp(84px, 13vw, 132px);
+    --card-h: calc(var(--card-w) * 1.4);
+}
+
+/* --- answer options --------------------------------------------------- */
+.quiz-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(7.5rem, 11rem));
+    gap: 0.8rem 1rem;
+    justify-content: center;
+}
+.quiz-option {
+    min-height: 3.2rem;
+    font-size: 1.35rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.quiz-option--right {
+    color: #fff !important;
+    background: #1f9d4d !important;
+    border-color: #1f9d4d !important;
+}
+.quiz-option--wrong {
+    color: #fff !important;
+    background: #b23a3a !important;
+    border-color: #b23a3a !important;
+    opacity: 0.85;
+}
+
+@media (min-width: 640px) {
+    .quiz-options { grid-template-columns: repeat(4, minmax(6.5rem, 8.5rem)); }
+}
+
+/* --- cards-per-hand selector ------------------------------------------ */
+.quiz-cardcount {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.quiz-cardcount__label {
+    color: var(--gold-soft);
+    opacity: 0.8;
+    font-size: 0.8rem;
+    margin-right: 0.2rem;
+}
+.quiz-cardcount__opt {
+    min-width: 2.4rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gold-soft);
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    cursor: pointer;
+}
+.quiz-cardcount__opt:hover { filter: brightness(1.12); }
+.quiz-cardcount__opt.is-active {
+    color: var(--ink);
+    background: var(--gold);
+    border-color: var(--gold);
+}
+
+/* --- counting guide (shown after a miss) ------------------------------ */
+.quiz-guide {
+    align-self: center;
+    width: min(92vw, 520px);
+    padding: 0.6rem 1rem 0.7rem;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+.quiz-guide__title {
+    margin: 0 0 0.3rem;
+    font-size: 0.85rem;
+    color: var(--gold-soft);
+}
+.quiz-guide__list {
+    margin: 0;
+    padding-left: 1.3rem;
+    font-size: 0.95rem;
+    color: #fff;
+}
+.quiz-guide__list li {
+    margin: 0.15rem 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- reused feedback chrome (copied from strategy.css to stay decoupled) --- */
+.coach-scorecard {
+    position: absolute;
+    top: 0.9rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    font-size: 0.8rem;
+}
+.score__item { color: var(--gold-soft); white-space: nowrap; padding: 0 0.35rem; }
+.score__item b { color: #fff; font-variant-numeric: tabular-nums; }
+
+.coach-hint {
+    align-self: center;
+    max-width: min(90vw, 560px);
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    text-align: center;
+    font-size: 0.95rem;
+    color: #fff;
+    background: rgba(178, 58, 58, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.btn--coach {
+    color: var(--ink) !important;
+    background: var(--gold) !important;
+    animation: coach-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes coach-pulse {
+    from { box-shadow: 0 0 8px rgba(245, 230, 168, 0.7), 0 0 16px rgba(212, 175, 55, 0.5); }
+    to   { box-shadow: 0 0 16px rgba(245, 230, 168, 1), 0 0 34px rgba(212, 175, 55, 0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn--coach { animation: none; box-shadow: 0 0 16px rgba(245, 230, 168, 1), 0 0 34px rgba(212, 175, 55, 0.95); }
+    .quiz-timer__bar { transition: none !important; }
+}

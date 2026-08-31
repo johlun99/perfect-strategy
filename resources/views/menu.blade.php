@@ -22,12 +22,12 @@
                 <span class="tile__cta">Play →</span>
             </a>
 
-            <div class="tile tile--disabled" aria-disabled="true">
-                <span class="badge">Coming soon</span>
+            <a class="tile tile--active" href="{{ route('hand-value') }}" data-sound="click">
                 <span class="tile__icon">🔢</span>
-                <span class="tile__name">Card Count</span>
-                <span class="tile__desc">Drill counting card values against the clock.</span>
-            </div>
+                <span class="tile__name">Hand Value</span>
+                <span class="tile__desc">See a hand, call its value before the clock runs out.</span>
+                <span class="tile__cta">Practice →</span>
+            </a>
 
             <a class="tile tile--active" href="{{ route('strategy') }}" data-sound="click">
                 <span class="tile__icon">🎯</span>
